@@ -4,17 +4,22 @@ from models import *
 from flask.json import jsonify
 from sqlalchemy.exc import IntegrityError
 from http import HTTPStatus
+from flask_migrate import  Migrate
 
 app = Flask(__name__)  # creating the Flask class object
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hospital.sqlite3'
 app.config['SECRET_KEY'] = "secret key"
+db.init_app(app)
 print(__name__)
+Migrate(app, db)
+
 
 
 @app.before_first_request
 def setup_db():
     db.init_app(app)
     db.create_all()
+
 
 
 @app.route('/')  # decorator drfines the
@@ -68,7 +73,7 @@ def create_admin():
 
 @app.route('/user/<national_id>')
 def get_user(national_id):
-    user = User.query.get(national_id)
+    user = User.query.filter_by(national_id=national_id).first()
 
     if user is None:
         return jsonify({'message': 'Error: No user found'}), HTTPStatus.NOT_FOUND
@@ -79,7 +84,7 @@ def get_user(national_id):
 @app.route("/user_profile")
 def get_user_profile():
     username = list(request.args.to_dict(flat=False).keys())[0]
-    user = User.query.get(username)
+    user = User.query.filter_by(national_id=username).first()
     your_keys = ['name', "role", 'national_id']
     dict_you_want = {your_key: user.to_dict()[your_key] for your_key in your_keys}
 
