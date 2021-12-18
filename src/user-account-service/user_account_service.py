@@ -24,8 +24,9 @@ def home():
 
 @app.route('/create_user', methods=['POST'])
 def create_user():
+    print(request)
     data = request.json
-
+    print("data is ", data)
     user = User(name=data.get('name'),
                 hashed_passwd=data.get('hashed_passwd'),
                 national_id=data.get('national_id'),
@@ -77,24 +78,22 @@ def get_user(national_id):
 
 @app.route("/user_profile")
 def get_user_profile():
-
     username = list(request.args.to_dict(flat=False).keys())[0]
     user = User.query.get(username)
     your_keys = ['name', "role", 'national_id']
-    dict_you_want = { your_key: user.to_dict()[your_key] for your_key in your_keys }
+    dict_you_want = {your_key: user.to_dict()[your_key] for your_key in your_keys}
 
     return jsonify({'message': 'Success', 'user': dict_you_want}), HTTPStatus.OK
+
 
 @app.route("/admin_profile")
 def get_admin_profile():
-
     username = list(request.args.to_dict(flat=False).keys())[0]
     user = Admin.query.get(username)
     your_keys = ['username']
-    dict_you_want = { your_key: user.to_dict()[your_key] for your_key in your_keys }
+    dict_you_want = {your_key: user.to_dict()[your_key] for your_key in your_keys}
 
     return jsonify({'message': 'Success', 'user': dict_you_want}), HTTPStatus.OK
-
 
 
 @app.route('/admin/<username>')
@@ -118,9 +117,8 @@ def all_patients():
     return_list = []
     your_keys = ['name', "role", 'national_id']
     for u in temp_list:
-        dict_you_want = { your_key: u[your_key] for your_key in your_keys }
+        dict_you_want = {your_key: u[your_key] for your_key in your_keys}
         return_list.append(dict_you_want)
-
 
     return jsonify(return_list)
 
@@ -136,9 +134,8 @@ def all_doctors():
     return_list = []
     your_keys = ['name', "role", 'national_id']
     for u in temp_list:
-        dict_you_want = { your_key: u[your_key] for your_key in your_keys }
+        dict_you_want = {your_key: u[your_key] for your_key in your_keys}
         return_list.append(dict_you_want)
-
 
     return jsonify(return_list)
 
