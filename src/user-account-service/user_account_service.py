@@ -1,25 +1,25 @@
+from datetime import date
+
 from flask import Flask, request, g
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
+
 from models import *
 from flask.json import jsonify
 from sqlalchemy.exc import IntegrityError
 from http import HTTPStatus
-from flask_migrate import  Migrate
+from flask_migrate import Migrate
 
 app = Flask(__name__)  # creating the Flask class object
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hospital.sqlite3'
 app.config['SECRET_KEY'] = "secret key"
 db.init_app(app)
-print(__name__)
 Migrate(app, db)
-
 
 
 @app.before_first_request
 def setup_db():
     db.init_app(app)
     db.create_all()
-
 
 
 @app.route('/')  # decorator drfines the
@@ -29,9 +29,7 @@ def home():
 
 @app.route('/create_user', methods=['POST'])
 def create_user():
-    print(request)
     data = request.json
-    print("data is ", data)
     user = User(name=data.get('name'),
                 hashed_passwd=data.get('hashed_passwd'),
                 national_id=data.get('national_id'),
@@ -114,7 +112,6 @@ def get_admin(username):
 @app.route('/show_patients/', methods=['GET'])
 def all_patients():
     username = list(request.args.to_dict(flat=False).keys())[0]
-    print("show patien", username)
     admin = Admin.query.get(username)
     if admin is None:
         return jsonify({'message': 'Error: you are not admin'}), HTTPStatus.NOT_FOUND
@@ -143,6 +140,36 @@ def all_doctors():
         return_list.append(dict_you_want)
 
     return jsonify(return_list)
+
+
+@app.route('/patients/stats', methods=['GET'])
+def patients_stats():
+    query = User.query
+    try:
+        day = int(request.args["day"])
+        month = int(request.args["month"])
+        year = int(request.args["year"])
+        date_obj = date(year, month, day)
+    except:
+        return jsonify({"message": "Bad request"}), HTTPStatus.BAD_REQUEST
+    query = query.filter_by(role="patient")
+    query = query.filter(func.DATE(User.timestamp) == date_obj)
+    return jsonify([patient.to_dict() for patient in query.all()])
+
+
+@app.route('/doctors/stats', methods=['GET'])
+def doctors_stats():
+    query = User.query
+    try:
+        day = int(request.args["day"])
+        month = int(request.args["month"])
+        year = int(request.args["year"])
+        date_obj = date(year, month, day)
+    except:
+        return jsonify({"message": "Bad request"}), HTTPStatus.BAD_REQUEST
+    query = query.filter_by(role="doctor")
+    query = query.filter(func.DATE(User.timestamp) == date_obj)
+    return jsonify([doctor.to_dict() for doctor in query.all()])
 
 
 if __name__ == '__main__':
