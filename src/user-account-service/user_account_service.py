@@ -1,6 +1,6 @@
 from datetime import date
 
-from flask import Flask, request, g
+from flask import Flask, request, g, session
 from sqlalchemy import func
 
 from models import *
@@ -27,14 +27,18 @@ def home():
     return "hello, this is our first flask website";
 
 
-@app.route('/create_user', methods=['POST'])
-def create_user():
+@app.route('/create_user/<role>', methods=['POST'])
+def create_user(role):
     data = request.json
-    user = User(name=data.get('name'),
-                hashed_passwd=data.get('hashed_passwd'),
-                national_id=data.get('national_id'),
+    if role == 'doctor':
+        user = Doctor(name=data.get('name'),
+                    hashed_passwd=data.get('hashed_passwd'),
+                    national_id=data.get('national_id'))
 
-                role=data.get('role'))
+    else:
+        user = Patient(name=data.get('name'),
+                    hashed_passwd=data.get('hashed_passwd'),
+                    national_id=data.get('national_id'))
 
     try:
         db.session.add(user)
@@ -69,9 +73,12 @@ def create_admin():
             return jsonify({'message': 'Error: bad request error'}), HTTPStatus.BAD_REQUEST
 
 
-@app.route('/user/<national_id>')
-def get_user(national_id):
-    user = User.query.filter_by(national_id=national_id).first()
+@app.route('/user/<role>/<national_id>')
+def get_user(role, national_id):
+    if role == "doctor":
+        user = Doctor.query.filter_by(national_id=national_id).first()
+    else:
+        user = Patient.query.filter_by(national_id=national_id).first()
 
     if user is None:
         return jsonify({'message': 'Error: No user found'}), HTTPStatus.NOT_FOUND
@@ -81,11 +88,18 @@ def get_user(national_id):
 
 @app.route("/user_profile")
 def get_user_profile():
-    username = list(request.args.to_dict(flat=False).keys())[0]
-    user = User.query.filter_by(national_id=username).first()
-    your_keys = ['name', "role", 'national_id']
-    dict_you_want = {your_key: user.to_dict()[your_key] for your_key in your_keys}
+    data = request.args.to_dict(flat=False)
+    username = data["username"][0]
+    role = data["role"][0]
+    print(username, role)
+    if role == "doctor":
+        user = Doctor.query.filter_by(national_id=username).first()
+    else:
+        user = Patient.query.filter_by(national_id=username).first()
 
+    your_keys = ['name', 'national_id']
+    dict_you_want = {your_key: user.to_dict()[your_key] for your_key in your_keys}
+    dict_you_want["role"] = role
     return jsonify({'message': 'Success', 'user': dict_you_want}), HTTPStatus.OK
 
 
@@ -115,9 +129,9 @@ def all_patients():
     admin = Admin.query.get(username)
     if admin is None:
         return jsonify({'message': 'Error: you are not admin'}), HTTPStatus.NOT_FOUND
-    temp_list = [u.to_dict() for u in User.query.filter_by(role="patient").all()]
+    temp_list = [u.to_dict() for u in Patient.query.all()]
     return_list = []
-    your_keys = ['name', "role", 'national_id']
+    your_keys = ['name', 'national_id']
     for u in temp_list:
         dict_you_want = {your_key: u[your_key] for your_key in your_keys}
         return_list.append(dict_you_want)
@@ -132,9 +146,9 @@ def all_doctors():
     admin = Admin.query.get(username)
     if admin is None:
         return jsonify({'message': 'Error: you are not admin'}), HTTPStatus.NOT_FOUND
-    temp_list = [u.to_dict() for u in User.query.filter_by(role="doctor").all()]
+    temp_list = [u.to_dict() for u in Doctor.query.all()]
     return_list = []
-    your_keys = ['name', "role", 'national_id']
+    your_keys = ['name', 'national_id']
     for u in temp_list:
         dict_you_want = {your_key: u[your_key] for your_key in your_keys}
         return_list.append(dict_you_want)
@@ -144,7 +158,7 @@ def all_doctors():
 
 @app.route('/patients/stats', methods=['GET'])
 def patients_stats():
-    query = User.query
+    query = Patient.query
     try:
         day = int(request.args["day"])
         month = int(request.args["month"])
@@ -152,14 +166,13 @@ def patients_stats():
         date_obj = date(year, month, day)
     except:
         return jsonify({"message": "Bad request"}), HTTPStatus.BAD_REQUEST
-    query = query.filter_by(role="patient")
-    query = query.filter(func.DATE(User.timestamp) == date_obj)
+    query = query.filter(func.DATE(Patient.timestamp) == date_obj)
     return jsonify([patient.to_dict() for patient in query.all()])
 
 
 @app.route('/doctors/stats', methods=['GET'])
 def doctors_stats():
-    query = User.query
+    query = Doctor.query
     try:
         day = int(request.args["day"])
         month = int(request.args["month"])
@@ -167,8 +180,7 @@ def doctors_stats():
         date_obj = date(year, month, day)
     except:
         return jsonify({"message": "Bad request"}), HTTPStatus.BAD_REQUEST
-    query = query.filter_by(role="doctor")
-    query = query.filter(func.DATE(User.timestamp) == date_obj)
+    query = query.filter(func.DATE(Doctor.timestamp) == date_obj)
     return jsonify([doctor.to_dict() for doctor in query.all()])
 
 
