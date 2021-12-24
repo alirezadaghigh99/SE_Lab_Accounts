@@ -5,6 +5,5 @@
   cd user-account-service
 ```
 ```
-  docker-compose build
-  docker-compose up
+  python user_account_service.py
   ```
